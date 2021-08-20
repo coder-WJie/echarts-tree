@@ -1,13 +1,76 @@
 <template>
   <div class="about">
-    <h1>This is an about page</h1>
-    <div id="tree" ref="tree_ref" style="width: 1000px; height: 800px"></div>
+    <div class="manager">
+      <el-descriptions title="仓库信息">
+        <el-descriptions-item label="仓库名称"
+          >kooriookami</el-descriptions-item
+        >
+        <el-descriptions-item label="仓库创建者"
+          >kooriookami</el-descriptions-item
+        >
+        <el-descriptions-item label="仓库分支总数"
+          >{{branchesTotal}}</el-descriptions-item
+        >
+        <el-descriptions-item
+          label="当前分支"
+          :labelStyle="{ lineHeight: '40px' }"
+        >
+          <el-input
+            v-model="currentBranchName"
+            @change="currentBranchChange"
+            placeholder="请输入分支名"
+          ></el-input>
+        </el-descriptions-item>
+        <el-descriptions-item
+          label="分支展开类型"
+          :labelStyle="{ lineHeight: '32px' }"
+        >
+          <el-radio-group v-model="exapandMethod" size="small">
+            <el-radio-button label="全部展开"></el-radio-button>
+            <el-radio-button label="逐级展开"></el-radio-button>
+          </el-radio-group>
+        </el-descriptions-item>
+        <el-descriptions-item label="备注">
+          <el-tag size="small">正交树图</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="提交记录">个人提交记录/仓库完整提交记录</el-descriptions-item>
+        <el-descriptions-item label="其他暂定"
+          >kooriookami</el-descriptions-item
+        >
+      </el-descriptions>
+    </div>
+    <!-- 树图 -->
+    <div id="tree" ref="tree_ref"></div>
+    <!-- commit信息 -->
+    <el-card class="box-card">
+      <div slot="header" class="clearfix">
+        <span>当前分支信息</span>
+        <el-button style="float: right; padding: 3px 0" type="text"
+        @click="goParentBranch"
+          >父级分支</el-button
+        >
+      </div>
+      <div class="branchInfo">
+        <p>分支名：{{ currentBranch.name }}</p>
+        <p>分支创建者：{{ currentBranch.dataIndex }}</p>
+        <p>分支贡献者：{{ currentBranch.dataIndex }}</p>
+        <p>分支状态：正在开发/开发完毕</p>
+        <p>最近修改：{{ currentBranch.value }}</p>
+      </div>
+    </el-card>
   </div>
 </template>
 <script>
+import flatObj from '../utils/flatObject'
 export default {
   data() {
     return {
+      exapandMethod: "", // 展开方式
+      currentBranchName: "", // 当前分支
+      currentBranch: {
+        name: "",
+        info: {},
+      },
       treeData: {
         name: "flare",
         children: [
@@ -129,6 +192,11 @@ export default {
       chartInstance: null,
     };
   },
+  computed: {
+    branchesTotal() {
+      return flatObj(this.treeData).length
+    }
+  },
   mounted() {
     this.initChart();
   },
@@ -165,12 +233,12 @@ export default {
             data: [this.treeData],
 
             top: "5%",
-            left: "7%",
+            left: "17%",
             bottom: "2%",
             right: "60%",
 
-            symbolSize: 7,
-
+            symbolSize: 12,
+            roam: true,
             label: {
               position: "left",
               verticalAlign: "middle",
@@ -186,94 +254,92 @@ export default {
             },
 
             emphasis: {
-              focus: "descendant",
+              focus: "none",
             },
 
             expandAndCollapse: true,
-
-            animationDuration: 550,
-            animationDurationUpdate: 750,
-          },
-          {
-            type: "tree",
-            name: "tree2",
-            data: [this.treeData],
-
-            top: "20%",
-            left: "60%",
-            bottom: "22%",
-            right: "18%",
-
-            symbolSize: 7,
-
-            label: {
-              position: "left",
-              verticalAlign: "middle",
-              align: "right",
-            },
-
-            leaves: {
-              label: {
-                position: "right",
-                verticalAlign: "middle",
-                align: "left",
-              },
-            },
-
-            expandAndCollapse: true,
-
-            emphasis: {
-              focus: "descendant",
-            },
 
             animationDuration: 550,
             animationDurationUpdate: 750,
           },
         ],
+        dataZoom: [{}],
       };
       this.chartInstance.setOption(option);
-      this.chartInstance.on("click", function (parmas) {
-
-        console.log(`----------click------------`,parmas);
-        /*   myChart.setOption({
-            series: [
-              {
-                name: "pie",
-                // 通过饼图表现单个柱子中的数据分布
-                data: [detail.data],
-              },
-            ],
-          }); */
-      });
-
-      this.chartInstance.on("mouseover", function (parmas) {
-
-        console.log(`----------mouseover------------`,parmas);
-        /*   myChart.setOption({
-            series: [
-              {
-                name: "pie",
-                // 通过饼图表现单个柱子中的数据分布
-                data: [detail.data],
-              },
-            ],
-          }); */
-      });
-      // 图例开关的行为只会触发 legendselectchanged 事件
-      this.chartInstance.on("legendselectchanged", function (params) {
-        // 获取点击图例的选中状态
-        var isSelected = params.selected[params.name];
-        // 在控制台中打印
-        console.log(
-          (isSelected ? "选中了" : "取消选中了") + "图例" + params.name
-        );
-        // 打印所有图例的状态
-        console.log(params.selected);
+      // 点击事件
+      this.chartInstance.on("click", (parmas) => {
+        console.log(`----------click------------`, parmas);
+        this.currentBranchName = parmas.name; // 分支名
+        this.currentBranch = parmas; // 分支信息
       });
     },
+    // 搜索框搜索分支
+    currentBranchChange(currentBranchName) {
+      if(!currentBranchName) return
+      // 拿到 分支名匹配的data，设置配置项
+      let currentBranchData = flatObj(this.treeData).find(item => {
+        if(item.name === currentBranchName){
+        }
+        return item.name === currentBranchName
+      })
+      this.currentBranch = currentBranchData
+      console.log(`----------currentBranch------------`,currentBranchData);
+       this.chartInstance.setOption({
+            series: [
+              {
+                data: [currentBranchData],
+              },
+            ],
+          });
+    },
+    // 查看当前分支的父级分支
+    goParentBranch() {
+      console.log(`----------展示父级分支------------`);
+    }
   },
 };
 </script>
 
 <style scoped>
+.manager {
+  /* border: 1px solid; */
+  border-radius: 2px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+#tree {
+  height: 800px;
+  width: 800px;
+  margin: 0;
+  display: inline-block;
+}
+/deep/ .el-descriptions-item {
+  /* height: 40; */
+  /* line-height: 40; */
+}
+
+.text {
+  font-size: 14px;
+}
+
+.item {
+  margin-bottom: 18px;
+}
+
+.clearfix:before,
+.clearfix:after {
+  display: table;
+  content: "";
+}
+.clearfix:after {
+  clear: both;
+}
+
+.box-card {
+  position: absolute;
+  right: 7px;
+  display: inline-block;
+  width: 380px;
+  height: 800px;
+  margin: 0px;
+}
 </style>
