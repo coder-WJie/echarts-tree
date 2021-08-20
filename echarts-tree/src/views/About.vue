@@ -8,9 +8,9 @@
         <el-descriptions-item label="仓库创建者"
           >kooriookami</el-descriptions-item
         >
-        <el-descriptions-item label="仓库分支总数"
-          >{{branchesTotal}}</el-descriptions-item
-        >
+        <el-descriptions-item label="仓库分支总数">{{
+          branchesTotal
+        }}</el-descriptions-item>
         <el-descriptions-item
           label="当前分支"
           :labelStyle="{ lineHeight: '40px' }"
@@ -32,36 +32,44 @@
         </el-descriptions-item>
         <el-descriptions-item label="备注">
           <el-tag size="small">正交树图</el-tag>
+          <el-tag size="small">径向树图</el-tag>
+          <el-tag size="small">缩进树图</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="提交记录">个人提交记录/仓库完整提交记录</el-descriptions-item>
+        <el-descriptions-item label="提交记录"
+          >个人提交记录/仓库完整提交记录</el-descriptions-item
+        >
         <el-descriptions-item label="其他暂定"
           >kooriookami</el-descriptions-item
         >
       </el-descriptions>
     </div>
-    <!-- 树图 -->
-    <div id="tree" ref="tree_ref"></div>
-    <!-- commit信息 -->
-    <el-card class="box-card">
-      <div slot="header" class="clearfix">
-        <span>当前分支信息</span>
-        <el-button style="float: right; padding: 3px 0" type="text"
-        @click="goParentBranch"
-          >父级分支</el-button
-        >
-      </div>
-      <div class="branchInfo">
-        <p>分支名：{{ currentBranch.name }}</p>
-        <p>分支创建者：{{ currentBranch.dataIndex }}</p>
-        <p>分支贡献者：{{ currentBranch.dataIndex }}</p>
-        <p>分支状态：正在开发/开发完毕</p>
-        <p>最近修改：{{ currentBranch.value }}</p>
-      </div>
-    </el-card>
+    <div class="container">
+      <!-- 树图 -->
+      <div id="tree" ref="tree_ref"></div>
+      <!-- commit信息 -->
+      <el-card class="box-card">
+        <div slot="header" class="clearfix">
+          <span>当前分支信息</span>
+          <el-button
+            style="float: right; padding: 3px 0"
+            type="text"
+            @click="goParentBranch"
+            >父级分支</el-button
+          >
+        </div>
+        <div class="branchInfo">
+          <p>分支名：{{ currentBranch.name }}</p>
+          <p>分支创建者：{{ currentBranch.dataIndex }}</p>
+          <p>分支贡献者：{{ currentBranch.dataIndex }}</p>
+          <p>分支状态：正在开发/开发完毕</p>
+          <p>提交记录：{{ currentBranch.value }}</p>
+        </div>
+      </el-card>
+    </div>
   </div>
 </template>
 <script>
-import flatObj from '../utils/flatObject'
+import flatObj from "../utils/flatObject";
 export default {
   data() {
     return {
@@ -194,15 +202,17 @@ export default {
   },
   computed: {
     branchesTotal() {
-      return flatObj(this.treeData).length
-    }
+      return flatObj(this.treeData).length;
+    },
   },
   mounted() {
     this.initChart();
   },
   methods: {
     initChart() {
-      this.chartInstance = this.$echarts.init(this.$refs.tree_ref);
+      this.chartInstance = this.$echarts.init(this.$refs.tree_ref, null, {
+        renderer: "svg",
+      });
       let option = {
         tooltip: {
           trigger: "item",
@@ -252,12 +262,17 @@ export default {
                 align: "left",
               },
             },
+            // 选中状态
+            select: {
+              selectMode: true, // 支持多选
+            },
 
             emphasis: {
               focus: "none",
             },
 
             expandAndCollapse: true,
+            initialTreeDepth: 2,
 
             animationDuration: 550,
             animationDurationUpdate: 750,
@@ -275,30 +290,31 @@ export default {
     },
     // 搜索框搜索分支
     currentBranchChange(currentBranchName) {
-      if(!currentBranchName) return
+      if (!currentBranchName) return;
       // 拿到 分支名匹配的data，设置配置项
-      let currentBranchData = flatObj(this.treeData).find(item => {
-        if(item.name === currentBranchName){
+      let currentBranchData = flatObj(this.treeData).find((item) => {
+        if (item.name === currentBranchName) {
         }
-        return item.name === currentBranchName
-      })
-      this.currentBranch = currentBranchData
-      console.log(`----------currentBranch------------`,currentBranchData);
-       this.chartInstance.setOption({
-            series: [
-              {
-                data: [currentBranchData],
-              },
-            ],
-          });
+        return item.name === currentBranchName;
+      });
+      this.currentBranch = currentBranchData;
+      console.log(`----------currentBranch------------`, currentBranchData);
+      this.chartInstance.setOption({
+        series: [
+          {
+            data: [currentBranchData],
+          },
+        ],
+      });
     },
     // 查看当前分支的父级分支
     goParentBranch() {
       console.log(`----------展示父级分支------------`);
-    }
+    },
   },
 };
 </script>
+
 
 <style scoped>
 .manager {
@@ -306,9 +322,14 @@ export default {
   border-radius: 2px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
+.container {
+  display: flex;
+  justify-content: space-between;
+}
 #tree {
+  left: 0;
   height: 800px;
-  width: 800px;
+  width: 1000px;
   margin: 0;
   display: inline-block;
 }
@@ -335,7 +356,6 @@ export default {
 }
 
 .box-card {
-  position: absolute;
   right: 7px;
   display: inline-block;
   width: 380px;
