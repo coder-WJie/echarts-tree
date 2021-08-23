@@ -161,8 +161,8 @@ function flatObj(obj) {
 }
 
 let res = flatObj(treeData);
-console.log('res', res);
+// console.log('res', res);
 
-console.log('flatObject(data)', flatObj(data));
+// console.log('flatObject(data)', flatObj(data));
 
 export default flatObj

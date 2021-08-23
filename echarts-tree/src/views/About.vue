@@ -12,20 +12,52 @@
           branchesTotal
         }}</el-descriptions-item>
         <el-descriptions-item
-          label="当前分支"
+          label="切换根分支"
           :labelStyle="{ lineHeight: '40px' }"
         >
-          <el-input
-            v-model="currentBranchName"
-            @change="currentBranchChange"
-            placeholder="请输入分支名"
-          ></el-input>
+          <el-select
+            v-model="rootBranchName"
+            filterable
+            placeholder="请选择分支"
+            @change="toggleRootBranch"
+          >
+            <el-option
+              v-for="item in branchesArr"
+              :key="item.name"
+              :label="item.name"
+              :value="item.name"
+            >
+            </el-option>
+          </el-select>
         </el-descriptions-item>
         <el-descriptions-item
-          label="分支展开类型"
+          label="搜索分支"
+          :labelStyle="{ lineHeight: '40px' }"
+        >
+          <el-select
+            v-model="currentBranchName"
+            filterable
+            placeholder="请选择分支"
+            @change="findBranch"
+          >
+            <el-option
+              v-for="item in branchesArr"
+              :key="item.name"
+              :label="item.name"
+              :value="item.name"
+            >
+            </el-option>
+          </el-select>
+        </el-descriptions-item>
+        <el-descriptions-item
+          label="分支展开方式"
           :labelStyle="{ lineHeight: '32px' }"
         >
-          <el-radio-group v-model="exapandMethod" size="small">
+          <el-radio-group
+            v-model="exapandMethod"
+            size="small"
+            @change="toggleExpandMethod"
+          >
             <el-radio-button label="全部展开"></el-radio-button>
             <el-radio-button label="逐级展开"></el-radio-button>
           </el-radio-group>
@@ -38,9 +70,11 @@
         <el-descriptions-item label="提交记录"
           >个人提交记录/仓库完整提交记录</el-descriptions-item
         >
-        <el-descriptions-item label="其他暂定"
-          >kooriookami</el-descriptions-item
-        >
+        <el-descriptions-item label="条件筛选"
+          ><el-tag size="small">正交树图</el-tag>
+          <el-tag size="small">径向树图</el-tag>
+          <el-tag size="small">缩进树图</el-tag>
+        </el-descriptions-item>
       </el-descriptions>
     </div>
     <div class="container">
@@ -73,17 +107,20 @@ import flatObj from "../utils/flatObject";
 export default {
   data() {
     return {
-      exapandMethod: "", // 展开方式
-      currentBranchName: "", // 当前分支
-      currentBranch: {
+      exapandMethod: "逐级展开", // 展开方式
+      rootBranchName: "", // 当前分支
+      rootBranch: {
         name: "",
         info: {},
       },
+      currentBranchName: "",
+      currentBranch: {},
       treeData: {
         name: "flare",
         children: [
           {
             name: "data",
+            collapsed: true,
             children: [
               {
                 name: "converters",
@@ -133,8 +170,14 @@ export default {
               { name: "Maximum", value: 843 },
               {
                 name: "methods",
+                collapsed: false,
                 children: [
-                  { name: "add", value: 593 },
+                  {
+                    name: "add",
+                    value: 593,
+                    collapsed: false,
+                    children: [{ name: "Anddd", value: 1037 }],
+                  },
                   { name: "and", value: 330 },
                   { name: "average", value: 287 },
                   { name: "count", value: 277 },
@@ -201,6 +244,10 @@ export default {
     };
   },
   computed: {
+    // 扁平化后的数组
+    branchesArr() {
+      return flatObj(this.treeData);
+    },
     branchesTotal() {
       return flatObj(this.treeData).length;
     },
@@ -210,9 +257,7 @@ export default {
   },
   methods: {
     initChart() {
-      this.chartInstance = this.$echarts.init(this.$refs.tree_ref, null, {
-        renderer: "svg",
-      });
+      this.chartInstance = this.$echarts.init(this.$refs.tree_ref);
       let option = {
         tooltip: {
           trigger: "item",
@@ -227,10 +272,6 @@ export default {
               name: "tree1",
               icon: "rectangle",
             },
-            {
-              name: "tree2",
-              icon: "rectangle",
-            },
           ],
           borderColor: "#c23531",
         },
@@ -243,9 +284,14 @@ export default {
             data: [this.treeData],
 
             top: "5%",
-            left: "17%",
+            left: "center",
             bottom: "2%",
-            right: "60%",
+            // right: "60%",
+
+            itemStyle: {
+              // 径向渐变，前三个参数分别是圆心 x, y 和半径，取值同线性渐变
+              color: "skyblue",
+            },
 
             symbolSize: 12,
             roam: true,
@@ -262,20 +308,37 @@ export default {
                 align: "left",
               },
             },
+            selectedMode: true, // 支持多选
             // 选中状态
             select: {
-              selectMode: true, // 支持多选
+              label: {
+                borderWidth: 2,
+                backgroundColor: "#e6e6e6",
+                fontStyle: "italic",
+                fontWight: "bolder",
+                fontSize: 16,
+                color: "blue",
+              },
+              itemStyle: {
+                color: "blue",
+              },
+              lineStyle: {
+                color: "#000",
+              },
             },
 
             emphasis: {
               focus: "none",
+              label: {
+                backgroundColor: "#e6e6e6",
+              },
             },
 
             expandAndCollapse: true,
             initialTreeDepth: 2,
 
             animationDuration: 550,
-            animationDurationUpdate: 750,
+            animationDurationUpdate: 550,
           },
         ],
         dataZoom: [{}],
@@ -287,25 +350,127 @@ export default {
         this.currentBranchName = parmas.name; // 分支名
         this.currentBranch = parmas; // 分支信息
       });
-    },
-    // 搜索框搜索分支
-    currentBranchChange(currentBranchName) {
-      if (!currentBranchName) return;
-      // 拿到 分支名匹配的data，设置配置项
-      let currentBranchData = flatObj(this.treeData).find((item) => {
-        if (item.name === currentBranchName) {
-        }
-        return item.name === currentBranchName;
+      this.chartInstance.on("select", (parmas) => {
+        console.log(`----------select------------`);
+        this.currentBranchName = parmas.name; // 分支名
+        this.currentBranch = parmas; // 分支信息
+        console.log(`----------select------------`, this.currentBranch);
       });
-      this.currentBranch = currentBranchData;
-      console.log(`----------currentBranch------------`, currentBranchData);
-      this.chartInstance.setOption({
+    },
+    // 切换根分支
+    toggleRootBranch(rootBranchName) {
+      if (!rootBranchName) return;
+      // 拿到 分支名匹配的data，设置配置项
+      let rootBranchData = flatObj(this.treeData).find((item) => {
+        if (item.name === rootBranchName) {
+        }
+        return item.name === rootBranchName;
+      });
+      this.rootBranch = rootBranchData;
+      console.log(`----------rootBranch------------`, rootBranchData);
+
+      let option = {
+        tooltip: {
+          trigger: "item",
+          triggerOn: "mousemove",
+        },
+        legend: {
+          top: "2%",
+          left: "3%",
+          orient: "vertical",
+          data: [
+            {
+              name: "tree1",
+              icon: "rectangle",
+            },
+          ],
+          borderColor: "#c23531",
+        },
         series: [
           {
-            data: [currentBranchData],
+            type: "tree",
+
+            name: "tree1",
+
+            data: [this.rootBranch],
+
+            top: "5%",
+            left: "center",
+            bottom: "2%",
+            // right: "60%",
+
+            itemStyle: {
+              // 径向渐变，前三个参数分别是圆心 x, y 和半径，取值同线性渐变
+              color: "skyblue",
+            },
+
+            symbolSize: 12,
+            roam: true,
+            label: {
+              position: "left",
+              verticalAlign: "middle",
+              align: "right",
+            },
+
+            leaves: {
+              label: {
+                position: "right",
+                verticalAlign: "middle",
+                align: "left",
+              },
+            },
+            selectedMode: true, // 支持多选
+            // 选中状态
+            select: {
+              label: {
+                borderWidth: 2,
+                backgroundColor: "#e6e6e6",
+                fontStyle: "italic",
+                fontWight: "bolder",
+                fontSize: 16,
+                color: "blue",
+              },
+              itemStyle: {
+                color: "blue",
+              },
+              lineStyle: {
+                color: "#000",
+              },
+            },
+
+            emphasis: {
+              focus: "none",
+              label: {
+                backgroundColor: "#e6e6e6",
+              },
+            },
+
+            expandAndCollapse: true,
+            initialTreeDepth: 2,
+
+            animationDuration: 550,
+            animationDurationUpdate: 550,
           },
         ],
+      };
+      // 先清空，再重新配置，还在寻求更好的解决方案（更新残留数据bug）
+      this.chartInstance.setOption({}, true);
+      this.chartInstance.setOption(option);
+    },
+    // 搜索分支
+    findBranch() {
+      this.chartInstance.dispatchAction({
+        type: "select",
+        name: this.currentBranchName,
       });
+    },
+    // 全部展开,选中节点的所有后代节点的collapse属性改为false
+    toggleExpandMethod() {
+      if (this.exapandMethod === "全部展开") {
+        console.log(`----------allExpand------------`, this.currentBranch);
+      } else {
+        console.log(`----------stepExpand------------`);
+      }
     },
     // 查看当前分支的父级分支
     goParentBranch() {
