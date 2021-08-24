@@ -71,9 +71,7 @@
           >个人提交记录/仓库完整提交记录</el-descriptions-item
         >
         <el-descriptions-item label="条件筛选"
-          ><el-tag size="small">正交树图</el-tag>
-          <el-tag size="small">径向树图</el-tag>
-          <el-tag size="small">缩进树图</el-tag>
+          >
         </el-descriptions-item>
       </el-descriptions>
     </div>
@@ -96,14 +94,14 @@
           <p>分支创建者：{{ currentBranch.dataIndex }}</p>
           <p>分支贡献者：{{ currentBranch.dataIndex }}</p>
           <p>分支状态：正在开发/开发完毕</p>
-          <p>提交记录：{{ currentBranch.value }}</p>
+          <p>分支提交记录：{{ currentBranch.value }}</p>
         </div>
       </el-card>
     </div>
   </div>
 </template>
 <script>
-import flatObj from "../utils/flatObject";
+import { flatObj ,doCollapsed,addCollapsedStatus} from "../utils/flatObject";
 export default {
   data() {
     return {
@@ -170,12 +168,10 @@ export default {
               { name: "Maximum", value: 843 },
               {
                 name: "methods",
-                collapsed: false,
                 children: [
                   {
                     name: "add",
                     value: 593,
-                    collapsed: false,
                     children: [{ name: "Anddd", value: 1037 }],
                   },
                   { name: "and", value: 330 },
@@ -244,6 +240,10 @@ export default {
     };
   },
   computed: {
+    // 给一项加collapsed
+    realData() {
+      return addCollapsedStatus(this.treeData)
+    },
     // 扁平化后的数组
     branchesArr() {
       return flatObj(this.treeData);
@@ -281,7 +281,7 @@ export default {
 
             name: "tree1",
 
-            data: [this.treeData],
+            data: [this.realData],
 
             top: "5%",
             left: "center",
@@ -313,17 +313,19 @@ export default {
             select: {
               label: {
                 borderWidth: 2,
+                borderRadius: '4px',
                 backgroundColor: "#e6e6e6",
                 fontStyle: "italic",
                 fontWight: "bolder",
-                fontSize: 16,
+                fontSize: 18,
                 color: "blue",
               },
               itemStyle: {
                 color: "blue",
               },
               lineStyle: {
-                color: "#000",
+                color: "blue",
+                backgroundColor: "blue"
               },
             },
 
@@ -335,20 +337,36 @@ export default {
             },
 
             expandAndCollapse: true,
-            initialTreeDepth: 2,
+            initialTreeDepth: 4,
 
             animationDuration: 550,
             animationDurationUpdate: 550,
           },
         ],
-        dataZoom: [{}],
       };
       this.chartInstance.setOption(option);
       // 点击事件
       this.chartInstance.on("click", (parmas) => {
         console.log(`----------click------------`, parmas);
+        // 拿到 分支名匹配的data，设置配置项
+        this.currentBranch = flatObj(this.treeData).find(
+          (item) => item.name === parmas.name
+        );
         this.currentBranchName = parmas.name; // 分支名
-        this.currentBranch = parmas; // 分支信息
+        // this.currentBranch = parmas; // 分支信息
+
+        if (this.exapandMethod === "全部展开") {
+          // 所有后代节点都展开
+          this.allExpand(this.currentBranch);
+          console.log(
+            `----------全部展开------------`,
+            parmas.data.collapsed,
+            this.currentBranch.collapsed,
+            this.treeData.children[0]
+          );
+        } else {
+          console.log(`----------逐级展开------------`, parmas.data);
+        }
       });
       this.chartInstance.on("select", (parmas) => {
         console.log(`----------select------------`);
@@ -471,6 +489,33 @@ export default {
       } else {
         console.log(`----------stepExpand------------`);
       }
+    },
+    allExpand(branch) {
+      console.log(`----------------------`, branch.collapsed);
+      if (branch.collapsed) {
+        console.log(`----all----默认展开--------------`, branch.collapsed);
+        // 折叠状态下点击该节点，展开所有后代节点
+        branch.collapsed = false;
+        if (branch.children) {
+          branch.children.forEach((item) => {
+            // 递归展开
+            doCollapsed(item,false)
+          });
+        }
+      } else {
+        console.log(`----------all--默认收缩----------`);
+        // 在展开的状态下选择该分支，只收缩该分支
+        branch.collapsed = true;
+      }
+      
+      // 重新渲染
+      this.chartInstance.setOption({
+        series: [
+          {
+            data: [this.treeData],
+          },
+        ],
+      });
     },
     // 查看当前分支的父级分支
     goParentBranch() {

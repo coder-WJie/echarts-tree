@@ -146,7 +146,7 @@ let data = {
     },
   ],
 };
-function flatObj(obj) {
+export function flatObj(obj) {
   let objArr = [];
   return (function flatObject(obj) {
       if (!obj) return;
@@ -165,4 +165,53 @@ let res = flatObj(treeData);
 
 // console.log('flatObject(data)', flatObj(data));
 
-export default flatObj
+
+let ads = {
+  name:12,
+  children: [
+    {
+      name: 23,
+      children: [
+        {
+          name:1344,
+
+        },
+        {
+          name:345
+        }
+      ]
+    }
+  ]
+}
+
+export function doCollapsed(obj,status) {
+  // 修改collopased值为status,bool类型
+  obj.collapsed = status
+  if (obj.children) {
+    obj.children.forEach((item) => {
+      doCollapsed(item)
+    });
+  }
+  return obj
+}
+
+console.log(`----------docoll------------`, doCollapsed(ads,true),ads);
+
+export function addCollapsedStatus(obj) {
+  obj.collapsed = false
+  if(obj.children) {
+    obj.children.forEach(item => {
+      item.collapsed = false
+      if(item.children) {
+        item.children.forEach(childItem => {
+          doCollapsed(childItem,true)
+        })
+      }
+    })
+  }
+  return obj
+}
+
+console.log(`----------add coll------------`, addCollapsedStatus(ads), ads);
+
+
